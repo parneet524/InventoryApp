@@ -1,26 +1,27 @@
 import json
 import boto3
-import ulid
+from decimal import Decimal
 
-dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("Inventory")
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('Inventory')
 
 def lambda_handler(event, context):
-    body = json.loads(event["body"])
+    try:
+        # Convert floats to Decimal automatically
+        body = json.loads(event["body"], parse_float=Decimal)
 
-    item = {
-        "item_id": str(ulid.new()),
-        "location_id": int(body["location_id"]),
-        "name": body["name"],
-        "description": body["description"],
-        "qty_on_hand": int(body["qty_on_hand"]),
-        "price": float(body["price"])
-    }
+        table.put_item(Item=body)
 
-    table.put_item(Item=item)
+        return {
+            "statusCode": 201,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"message": "Item created"})
+        }
 
-    return {
-        "statusCode": 201,
-        "body": json.dumps({"message": "Item created", "item": item})
-    }
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": str(e)})
+        }
 
